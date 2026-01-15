@@ -120,6 +120,15 @@ export const moodEntries = pgTable("mood_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// === ADMIN ANALYTICS CACHE (Optional for production) ===
+export const institutionalTrends = pgTable("institutional_trends", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull(),
+  value: integer("value").notNull(),
+  period: text("period").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({ id: true, createdAt: true });
 export type MoodEntry = typeof moodEntries.$inferSelect;
 export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;

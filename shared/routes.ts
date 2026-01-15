@@ -130,6 +130,16 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+  },
+  admin: {
+    stats: {
+      method: 'GET' as const,
+      path: '/api/admin/stats',
+      responses: {
+        200: z.any(),
+        401: errorSchemas.unauthorized,
+      }
+    }
   }
 };
 

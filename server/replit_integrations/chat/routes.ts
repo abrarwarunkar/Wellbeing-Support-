@@ -83,7 +83,13 @@ export function registerChatRoutes(app: Express): void {
       // Stream response from OpenAI
       const stream = await openai.chat.completions.create({
         model: "gpt-5.1",
-        messages: chatMessages,
+        messages: [
+          {
+            role: "system",
+            content: "You are a specialized Digital Psychological First-Aid Assistant. Your goal is to offer empathetic support, coping strategies (like box breathing, grounding exercises), and psychoeducation. ALWAYS analyze the sentiment of the user's message. If you detect high distress, suicidal ideation, or severe crisis, immediately provide emergency helpline numbers and urge them to contact professional help. Use a calm, supportive, and non-judgmental tone. Avoid medical diagnosis."
+          },
+          ...chatMessages
+        ],
         stream: true,
         max_completion_tokens: 2048,
       });

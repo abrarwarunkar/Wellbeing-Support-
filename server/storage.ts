@@ -123,6 +123,43 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(moodEntries).where(eq(moodEntries.userId, userId)).orderBy(desc(moodEntries.createdAt));
   }
 
+  async getMoodAnalytics(userId: string): Promise<{ averageScore: number; trend: 'improving' | 'declining' | 'stable' }> {
+    const entries = await db.select().from(moodEntries)
+      .where(eq(moodEntries.userId, userId))
+      .orderBy(desc(moodEntries.createdAt))
+      .limit(10);
+    
+    if (entries.length < 2) return { averageScore: entries[0]?.score || 0, trend: 'stable' };
+
+    const recent = entries.slice(0, Math.ceil(entries.length / 2));
+    const older = entries.slice(Math.ceil(entries.length / 2));
+
+    const avgRecent = recent.reduce((sum, e) => sum + e.score, 0) / recent.length;
+    const avgOlder = older.reduce((sum, e) => sum + e.score, 0) / older.length;
+
+    let trend: 'improving' | 'declining' | 'stable' = 'stable';
+    if (avgRecent > avgOlder + 0.1) trend = 'improving';
+    else if (avgRecent < avgOlder - 0.1) trend = 'declining';
+
+    return { averageScore: (avgRecent + avgOlder) / 2, trend };
+  }
+
+  // Admin Analytics
+  async getInstitutionalStats() {
+    const totalStudents = await db.select({ count: sql<number>`count(*)` }).from(users);
+    const totalAppointments = await db.select({ count: sql<number>`count(*)` }).from(appointments);
+    const moodDistribution = await db.select({ 
+      score: moodEntries.score, 
+      count: sql<number>`count(*)` 
+    }).from(moodEntries).groupBy(moodEntries.score);
+    
+    return {
+      totalStudents: totalStudents[0].count,
+      totalAppointments: totalAppointments[0].count,
+      moodDistribution
+    };
+  }
+
   async createMoodEntry(entry: InsertMoodEntry): Promise<MoodEntry> {
     const [newEntry] = await db.insert(moodEntries).values(entry).returning();
     return newEntry;
