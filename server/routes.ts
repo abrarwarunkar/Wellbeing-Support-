@@ -22,17 +22,19 @@ export async function registerRoutes(
   // === Appointments ===
   app.get(api.appointments.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    const appointments = await storage.getAppointments(req.user!.id);
+    const userId = (req.user as any).claims.sub;
+    const appointments = await storage.getAppointments(userId);
     res.json(appointments);
   });
 
   app.post(api.appointments.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).claims.sub;
     try {
       const input = api.appointments.create.input.parse(req.body);
       const appointment = await storage.createAppointment({
         ...input,
-        studentId: req.user!.id,
+        studentId: userId,
       });
       res.status(201).json(appointment);
     } catch (err) {
@@ -103,11 +105,12 @@ export async function registerRoutes(
 
   app.post(api.posts.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).claims.sub;
     try {
       const input = api.posts.create.input.parse(req.body);
       const post = await storage.createPost({
         ...input,
-        authorId: req.user!.id,
+        authorId: userId,
       });
       res.status(201).json(post);
     } catch (err) {
@@ -124,12 +127,13 @@ export async function registerRoutes(
   // === Replies ===
   app.post(api.replies.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).claims.sub;
     try {
       const input = api.replies.create.input.parse(req.body);
       const reply = await storage.createReply({
         ...input,
         postId: Number(req.params.postId),
-        authorId: req.user!.id,
+        authorId: userId,
       });
       res.status(201).json(reply);
     } catch (err) {
@@ -146,18 +150,20 @@ export async function registerRoutes(
   // === Mood ===
   app.get(api.mood.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    const entries = await storage.getMoodEntries(req.user!.id);
-    const analytics = await (storage as any).getMoodAnalytics(req.user!.id);
+    const userId = (req.user as any).claims.sub;
+    const entries = await storage.getMoodEntries(userId);
+    const analytics = await (storage as any).getMoodAnalytics(userId);
     res.json({ entries, analytics });
   });
 
   app.post(api.mood.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).claims.sub;
     try {
       const input = api.mood.create.input.parse(req.body);
       const entry = await storage.createMoodEntry({
         ...input,
-        userId: req.user!.id,
+        userId: userId,
       });
       res.status(201).json(entry);
     } catch (err) {
@@ -174,8 +180,9 @@ export async function registerRoutes(
   // === Admin ===
   app.get("/api/admin/stats", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).claims.sub;
     // In production, strictly check for admin role
-    const user = await storage.getUser(req.user!.id);
+    const user = await (storage as any).getUser(userId);
     if (user?.role !== 'admin' && user?.role !== 'counselor') {
       // For demo purposes, we might allow viewing if user is counselor
     }

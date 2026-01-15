@@ -17,7 +17,7 @@ import {
   type InsertMoodEntry,
   users
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Appointments
@@ -163,6 +163,11 @@ export class DatabaseStorage implements IStorage {
   async createMoodEntry(entry: InsertMoodEntry): Promise<MoodEntry> {
     const [newEntry] = await db.insert(moodEntries).values(entry).returning();
     return newEntry;
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 }
 
