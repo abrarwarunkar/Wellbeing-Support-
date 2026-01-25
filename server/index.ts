@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { setDefaultResultOrder } from "dns";
+setDefaultResultOrder("ipv4first");
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
