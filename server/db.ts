@@ -1,5 +1,8 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+// Fix for "connect ENETUNREACH" on Render/Railway/Supabase
+import { setDefaultResultOrder } from "dns";
+setDefaultResultOrder("ipv4first");
 import * as schema from "@shared/schema";
 
 const { Pool } = pg;
