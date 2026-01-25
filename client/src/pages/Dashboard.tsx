@@ -1,23 +1,43 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useMoodEntries } from "@/hooks/use-mood";
 import { useResources } from "@/hooks/use-resources";
 import { format } from "date-fns";
-import { 
-  Calendar, 
-  TrendingUp, 
-  ArrowRight, 
-  BookOpen, 
-  Activity 
+import {
+  Calendar,
+  TrendingUp,
+  ArrowRight,
+  BookOpen,
+  Activity,
+  Shield,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+
+import AdminDashboard from "./admin/AdminDashboard";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: appointments } = useAppointments();
   const { data: moodEntries } = useMoodEntries();
   const { data: resources } = useResources();
+
+  const { data: aiRecs, isLoading: loadingRecs } = useQuery<any[]>({
+    queryKey: ["/api/ai/recommendations"],
+    enabled: !!user && user.role !== 'admin'
+  });
+
+  if (user?.role === 'admin') {
+    return (
+      <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} initial="hidden" animate="show">
+        <AdminDashboard />
+      </motion.div>
+    );
+  }
 
   const nextAppointment = appointments?.find(a => new Date(a.date) > new Date());
   const recentMood = moodEntries?.[0]; // Assuming sorted by date desc
@@ -44,7 +64,14 @@ export default function Dashboard() {
         <h1 className="text-4xl md:text-5xl font-display font-bold text-slate-800 mb-2">
           Good Morning, <span className="text-primary">{user?.firstName || "Friend"}</span>.
         </h1>
-        <p className="text-xl text-muted-foreground">How are you feeling today?</p>
+        <div className="flex items-center gap-3">
+          <p className="text-xl text-muted-foreground">How are you feeling today?</p>
+          {user?.role === 'admin' && (
+            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+              <Shield size={12} /> Administrator
+            </span>
+          )}
+        </div>
       </motion.div>
 
       {/* Stats Grid */}
@@ -127,7 +154,59 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Recommended Resources */}
+      {/* Screening CTA */}
+      <motion.div variants={item} className="mt-8">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-8 text-white relative overflow-hidden">
+          <div className="relative z-10 max-w-2xl">
+            <h2 className="text-2xl font-bold mb-2">How is your mental wellbeing?</h2>
+            <p className="text-indigo-100 mb-6 text-lg">
+              Take a quick, confidential assessment to get personalized recommendations and understand your risk level.
+            </p>
+            <Link href="/screening/assessment">
+              <Button size="lg" variant="secondary" className="gap-2 font-bold text-indigo-700">
+                Take Assessment <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          <Activity className="absolute right-0 bottom-0 text-white/10 h-64 w-64 -mr-16 -mb-16" />
+        </div>
+      </motion.div>
+
+
+
+      {/* AI Powered Recommendations */}
+      <motion.div variants={item} className="mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800">AI Personal Insights</h2>
+        </div>
+
+        {loadingRecs ? (
+          <div className="p-8 text-center text-muted-foreground bg-white rounded-xl border border-dashed">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+            Generating your personalized wellness plan...
+          </div>
+        ) : aiRecs && aiRecs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {aiRecs.map((action: any, i: number) => (
+              <div key={i} className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-xl border border-indigo-100 shadow-sm hover:translate-y-[-2px] transition-transform">
+                <div className="bg-indigo-600 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm mb-4">
+                  {i + 1}
+                </div>
+                <h4 className="font-bold text-indigo-900 mb-2 truncate">{action.title}</h4>
+                <p className="text-sm text-slate-600 mb-3">{action.description}</p>
+                <div className="h-1 w-12 bg-indigo-200 rounded-full mt-auto"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">Complete a mood check-in to get AI suggestions.</p>
+        )}
+      </motion.div>
+
+      {/* Standard Recommended Resources (Keep below) */}
       <motion.div variants={item} className="mt-12">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-slate-800">Recommended For You</h2>
@@ -144,10 +223,10 @@ export default function Dashboard() {
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">{resource.title}</h3>
               <p className="text-muted-foreground mb-4 line-clamp-2">{resource.description}</p>
-              <a 
-                href={resource.content} 
-                target="_blank" 
-                rel="noreferrer" 
+              <a
+                href={resource.content}
+                target="_blank"
+                rel="noreferrer"
                 className="text-primary font-bold text-sm hover:underline"
               >
                 Read Now →

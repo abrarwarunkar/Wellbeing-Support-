@@ -1,15 +1,16 @@
 import { z } from 'zod';
-import { 
-  insertAppointmentSchema, 
-  appointments, 
-  insertResourceSchema, 
-  resources, 
-  insertPostSchema, 
-  posts, 
-  insertReplySchema, 
-  replies, 
-  insertMoodEntrySchema, 
-  moodEntries 
+import {
+  insertAppointmentSchema,
+  updateAppointmentSchema,
+  appointments,
+  insertResourceSchema,
+  resources,
+  insertPostSchema,
+  posts,
+  insertReplySchema,
+  replies,
+  insertMoodEntrySchema,
+  moodEntries
 } from './schema';
 import { users } from './models/auth';
 
@@ -50,7 +51,7 @@ export const api = {
     update: {
       method: 'PATCH' as const,
       path: '/api/appointments/:id',
-      input: insertAppointmentSchema.partial(),
+      input: updateAppointmentSchema,
       responses: {
         200: z.custom<typeof appointments.$inferSelect>(),
         400: errorSchemas.validation,

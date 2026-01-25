@@ -7,15 +7,39 @@ import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/Loader";
 import * as Dialog from "@radix-ui/react-dialog";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { User } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
 export default function Appointments() {
   const { data: appointments, isLoading } = useAppointments();
+  const { data: counselors } = useQuery<User[]>({ queryKey: ["/api/counselors"] });
   const createMutation = useCreateAppointment();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
+    counselorId: "",
     date: "",
     time: "",
     type: "online" as "online" | "in-person",
     notes: ""
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${id}`, { status: 'cancelled' });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({ title: "Appointment cancelled" });
+    },
+    onError: () => {
+      toast({ title: "Cancellation failed", variant: "destructive" });
+    }
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,14 +50,14 @@ export default function Appointments() {
     const dateTime = new Date(`${formData.date}T${formData.time}`);
 
     await createMutation.mutateAsync({
-      date: dateTime.toISOString(),
+      counselorId: formData.counselorId || undefined,
+      date: dateTime, // Pass Date object (Zod schema expects Date type)
       type: formData.type,
       notes: formData.notes,
       studentId: "user-id-placeholder", // In real app, backend infers this from session
-      status: "pending"
     });
     setIsOpen(false);
-    setFormData({ date: "", time: "", type: "online", notes: "" });
+    setFormData({ counselorId: "", date: "", time: "", type: "online", notes: "" });
   };
 
   if (isLoading) return <Loader />;
@@ -61,27 +85,42 @@ export default function Appointments() {
                   <X size={20} />
                 </Dialog.Close>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Select Counselor</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
+                    value={formData.counselorId}
+                    onChange={e => setFormData({ ...formData, counselorId: e.target.value })}
+                    required
+                  >
+                    <option value="">-- Choose a Counselor --</option>
+                    {counselors?.map(c => (
+                      <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Date</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       required
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       value={formData.date}
-                      onChange={e => setFormData({...formData, date: e.target.value})}
+                      onChange={e => setFormData({ ...formData, date: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700">Time</label>
-                    <input 
-                      type="time" 
+                    <input
+                      type="time"
                       required
                       className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       value={formData.time}
-                      onChange={e => setFormData({...formData, time: e.target.value})}
+                      onChange={e => setFormData({ ...formData, time: e.target.value })}
                     />
                   </div>
                 </div>
@@ -91,14 +130,14 @@ export default function Appointments() {
                   <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
                     <button
                       type="button"
-                      onClick={() => setFormData({...formData, type: "online"})}
+                      onClick={() => setFormData({ ...formData, type: "online" })}
                       className={`py-2 px-4 rounded-md text-sm font-medium transition-all ${formData.type === "online" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                     >
                       Online Video
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData({...formData, type: "in-person"})}
+                      onClick={() => setFormData({ ...formData, type: "in-person" })}
                       className={`py-2 px-4 rounded-md text-sm font-medium transition-all ${formData.type === "in-person" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                     >
                       In-Person
@@ -108,17 +147,17 @@ export default function Appointments() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Notes (Optional)</label>
-                  <textarea 
+                  <textarea
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none h-24 resize-none"
                     placeholder="Anything specific you'd like to discuss?"
                     value={formData.notes}
-                    onChange={e => setFormData({...formData, notes: e.target.value})}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
 
                 <div className="pt-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full btn-primary"
                     disabled={createMutation.isPending}
                   >
@@ -133,7 +172,7 @@ export default function Appointments() {
 
       <div className="grid gap-4">
         <AnimatePresence>
-          {appointments?.map((apt) => (
+          {appointments?.map((apt: any) => (
             <motion.div
               key={apt.id}
               initial={{ opacity: 0, y: 20 }}
@@ -149,6 +188,12 @@ export default function Appointments() {
                   <h3 className="font-bold text-lg text-slate-800">
                     {format(new Date(apt.date), "EEEE, MMMM do, yyyy")}
                   </h3>
+                  {/* Display Counselor Name if available */}
+                  {apt.counselor && (
+                    <p className="text-sm font-medium text-slate-700">
+                      Counselor: {apt.counselor.firstName} {apt.counselor.lastName}
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock size={16} />
@@ -162,7 +207,7 @@ export default function Appointments() {
                   {apt.notes && <p className="mt-2 text-sm text-slate-500 italic">"{apt.notes}"</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end gap-3">
                 <span className={`
                   px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
                   ${apt.status === 'confirmed' ? 'bg-green-100 text-green-700' : ''}
@@ -171,16 +216,42 @@ export default function Appointments() {
                 `}>
                   {apt.status}
                 </span>
-                {apt.status !== 'cancelled' && (
-                  <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 border-destructive/20">
-                    Cancel
-                  </Button>
-                )}
+
+                <div className="flex gap-2">
+                  {/* Message Button */}
+                  {apt.counselor?.email && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-primary hover:text-primary-700 hover:bg-primary/5"
+                      onClick={() => window.open(`mailto:${apt.counselor.email}`)}
+                    >
+                      Message Counselor
+                    </Button>
+                  )}
+
+                  {/* Cancel Button */}
+                  {apt.status !== 'cancelled' && apt.status !== 'completed' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to cancel this appointment?")) {
+                          cancelMutation.mutate(apt.id);
+                        }
+                      }}
+                      disabled={cancelMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
-        
+
         {appointments?.length === 0 && (
           <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
             <Calendar size={48} className="mx-auto text-slate-300 mb-4" />

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { 
-  LayoutDashboard, 
-  MessageSquareHeart, 
-  CalendarClock, 
-  BookOpen, 
-  Users, 
-  Smile, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  MessageSquareHeart,
+  CalendarClock,
+  BookOpen,
+  Users,
+  Smile,
+  LogOut,
   Menu,
   X
 } from "lucide-react";
@@ -20,7 +20,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const navItems = [
+  // Determine navigation based on role
+  let navItems = [
     { href: "/", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/chat", icon: MessageSquareHeart, label: "Chat Support" },
     { href: "/appointments", icon: CalendarClock, label: "Appointments" },
@@ -29,13 +30,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/mood", icon: Smile, label: "Mood Tracker" },
   ];
 
+  if (user?.role === 'counselor') {
+    navItems = [
+      { href: "/counselor", icon: LayoutDashboard, label: "Counselor Portal" },
+      // Counselors might want to view resources or forum to moderate? 
+      // User requested to remove client side things.
+      // So mainly Portal. Maybe Resources to reference.
+      { href: "/resources", icon: BookOpen, label: "Resource Library" },
+      { href: "/forum", icon: Users, label: "Community Forum" },
+    ];
+  } else if (user?.role === 'admin') {
+    navItems = [
+      { href: "/", icon: LayoutDashboard, label: "Admin Dashboard" },
+      // Admin likely wants to see everything or have specific admin routes 
+      // For now, keep it simple as user mainly asked about counselor
+    ];
+  }
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button 
-          variant="outline" 
-          size="icon" 
+        <Button
+          variant="outline"
+          size="icon"
           className="bg-white shadow-md rounded-full"
           onClick={() => setIsMobileOpen(!isMobileOpen)}
         >
@@ -70,8 +88,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 return (
                   <Link key={item.href} href={item.href} className={`
                     flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
-                    ${isActive 
-                      ? "bg-primary/10 text-primary shadow-sm" 
+                    ${isActive
+                      ? "bg-primary/10 text-primary shadow-sm"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}
                   `}>
                     <item.icon className={`w-5 h-5 ${isActive ? "text-primary" : "text-slate-400 group-hover:text-primary transition-colors"}`} />
@@ -93,8 +111,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/5"
                 onClick={() => logout()}
               >

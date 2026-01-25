@@ -1,0 +1,8 @@
+# Defaults
+node_modules
+dist
+.DS_Store
+.env
+
+# Project specific
+server/replit_integrations

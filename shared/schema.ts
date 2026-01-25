@@ -34,14 +34,28 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   }),
 }));
 
-export const insertAppointmentSchema = createInsertSchema(appointments).omit({ 
-  id: true, 
+export const insertAppointmentSchema = createInsertSchema(appointments, {
+  date: z.coerce.date()
+}).omit({
+  id: true,
   createdAt: true,
   status: true // Status is managed by backend usually, but we might want to allow setting it
 });
 
+// Update schema (includes status)
+export const updateAppointmentSchema = createInsertSchema(appointments, {
+  date: z.coerce.date().optional()
+}).pick({
+  date: true,
+  status: true,
+  type: true,
+  notes: true,
+  counselorId: true
+}).partial();
+
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+export type UpdateAppointment = z.infer<typeof updateAppointmentSchema>;
 
 // === RESOURCES ===
 export const resources = pgTable("resources", {
@@ -78,10 +92,10 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   replies: many(replies),
 }));
 
-export const insertPostSchema = createInsertSchema(posts).omit({ 
-  id: true, 
-  createdAt: true, 
-  isFlagged: true 
+export const insertPostSchema = createInsertSchema(posts).omit({
+  id: true,
+  createdAt: true,
+  isFlagged: true
 });
 export type Post = typeof posts.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
@@ -132,3 +146,32 @@ export const institutionalTrends = pgTable("institutional_trends", {
 export const insertMoodEntrySchema = createInsertSchema(moodEntries).omit({ id: true, createdAt: true });
 export type MoodEntry = typeof moodEntries.$inferSelect;
 export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
+
+// === SCREENING ASSESSMENTS ===
+export const screeningAssessments = pgTable("screening_assessments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  score: integer("score").notNull(),
+  riskLevel: text("risk_level").notNull(), // low, moderate, severe
+  answers: text("answers").notNull(), // JSON string of answers
+  aiAnalysis: text("ai_analysis"), // AI-generated report
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertScreeningSchema = createInsertSchema(screeningAssessments).omit({ id: true, createdAt: true });
+export type ScreeningAssessment = typeof screeningAssessments.$inferSelect;
+export type InsertScreening = z.infer<typeof insertScreeningSchema>;
+
+// === DAILY ANALYTICS SNAPSHOTS ===
+export const dailyInsights = pgTable("daily_insights", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").defaultNow(),
+  summary: text("summary").notNull(),
+  topConcerns: text("top_concerns").notNull(), // JSON string array
+  recommendation: text("recommendation").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInsightSchema = createInsertSchema(dailyInsights).omit({ id: true, createdAt: true });
+export type DailyInsight = typeof dailyInsights.$inferSelect;
+export type InsertDailyInsight = z.infer<typeof insertInsightSchema>;

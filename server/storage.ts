@@ -15,13 +15,33 @@ import {
   moodEntries,
   type MoodEntry,
   type InsertMoodEntry,
-  users
+  users,
+  type User,
+  type InsertUser,
+  documents,
+  type Document,
+  type InsertDocument,
+  screeningAssessments,
+  type ScreeningAssessment,
+  type InsertScreening,
+  dailyInsights,
+  type DailyInsight,
+  type InsertDailyInsight
 } from "@shared/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, or } from "drizzle-orm";
 
 export interface IStorage {
+  // Auth
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+
+  // Onboarding
+  createDocument(doc: InsertDocument): Promise<Document>;
+
   // Appointments
-  getAppointments(userId: string): Promise<Appointment[]>;
+  getAppointments(userId: string): Promise<(Appointment & { student: User | null, counselor: User | null })[]>;
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   updateAppointment(id: number, updates: Partial<InsertAppointment>): Promise<Appointment | undefined>;
 
@@ -40,12 +60,49 @@ export interface IStorage {
   // Mood
   getMoodEntries(userId: string): Promise<MoodEntry[]>;
   createMoodEntry(entry: InsertMoodEntry): Promise<MoodEntry>;
+  // Admin
+  getAllUsers(): Promise<User[]>;
+  // Screening
+  createScreeningAssessment(assessment: InsertScreening): Promise<ScreeningAssessment>;
+  getScreeningHistory(userId: string): Promise<ScreeningAssessment[]>;
+  getAllMoodEntries(): Promise<MoodEntry[]>;
+  getCounselors(): Promise<User[]>;
+  createDailyInsight(insight: InsertDailyInsight): Promise<DailyInsight>;
+  getLatestDailyInsight(): Promise<DailyInsight | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async getCounselors(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'counselor'));
+  }
+
+  // Screening
+  async createScreeningAssessment(assessment: InsertScreening): Promise<ScreeningAssessment> {
+    const [newAssessment] = await db.insert(screeningAssessments).values(assessment).returning();
+    return newAssessment;
+  }
+
+  async getScreeningHistory(userId: string): Promise<ScreeningAssessment[]> {
+    return await db.select().from(screeningAssessments)
+      .where(eq(screeningAssessments.userId, userId))
+      .orderBy(desc(screeningAssessments.createdAt));
+  }
+
   // Appointments
-  async getAppointments(userId: string): Promise<Appointment[]> {
-    return await db.select().from(appointments).where(eq(appointments.studentId, userId)).orderBy(desc(appointments.date));
+  async getAppointments(userId: string): Promise<(Appointment & { student: User | null, counselor: User | null })[]> {
+    const { or, eq } = await import("drizzle-orm");
+    return await db.query.appointments.findMany({
+      where: or(eq(appointments.studentId, userId), eq(appointments.counselorId, userId)),
+      orderBy: desc(appointments.date),
+      with: {
+        student: true,
+        counselor: true
+      }
+    });
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
@@ -123,12 +180,16 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(moodEntries).where(eq(moodEntries.userId, userId)).orderBy(desc(moodEntries.createdAt));
   }
 
+  async getAllMoodEntries(): Promise<MoodEntry[]> {
+    return await db.select().from(moodEntries).orderBy(desc(moodEntries.createdAt));
+  }
+
   async getMoodAnalytics(userId: string): Promise<{ averageScore: number; trend: 'improving' | 'declining' | 'stable' }> {
     const entries = await db.select().from(moodEntries)
       .where(eq(moodEntries.userId, userId))
       .orderBy(desc(moodEntries.createdAt))
       .limit(10);
-    
+
     if (entries.length < 2) return { averageScore: entries[0]?.score || 0, trend: 'stable' };
 
     const recent = entries.slice(0, Math.ceil(entries.length / 2));
@@ -148,15 +209,24 @@ export class DatabaseStorage implements IStorage {
   async getInstitutionalStats() {
     const totalStudents = await db.select({ count: sql<number>`count(*)` }).from(users);
     const totalAppointments = await db.select({ count: sql<number>`count(*)` }).from(appointments);
-    const moodDistribution = await db.select({ 
-      score: moodEntries.score, 
-      count: sql<number>`count(*)` 
+
+    // Mood Distribution (Pie Chart Data)
+    const moodDistribution = await db.select({
+      name: moodEntries.score, // Use score as name for chart
+      value: sql<number>`count(*)`
     }).from(moodEntries).groupBy(moodEntries.score);
-    
+
+    // Risk Distribution (Bar Chart Data)
+    const riskDistribution = await db.select({
+      name: users.latestRiskLevel,
+      value: sql<number>`count(*)`
+    }).from(users).groupBy(users.latestRiskLevel);
+
     return {
       totalStudents: totalStudents[0].count,
       totalAppointments: totalAppointments[0].count,
-      moodDistribution
+      moodDistribution,
+      riskDistribution
     };
   }
 
@@ -169,6 +239,38 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
+  }
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const [updatedUser] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    if (!updatedUser) throw new Error("User not found");
+    return updatedUser;
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const [newDoc] = await db.insert(documents).values(doc).returning();
+    return newDoc;
+  }
+
+  // Insights
+  async createDailyInsight(insight: InsertDailyInsight): Promise<DailyInsight> {
+    const [newInsight] = await db.insert(dailyInsights).values(insight).returning();
+    return newInsight;
+  }
+
+  async getLatestDailyInsight(): Promise<DailyInsight | undefined> {
+    const [insight] = await db.select().from(dailyInsights).orderBy(desc(dailyInsights.createdAt)).limit(1);
+    return insight;
+  }
 }
 
 export const storage = new DatabaseStorage();
+export const authStorage = storage;
