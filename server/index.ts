@@ -1,5 +1,5 @@
-import "./lib/ipv4-fix";
 import "dotenv/config";
+import "./lib/ipv4-fix";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
