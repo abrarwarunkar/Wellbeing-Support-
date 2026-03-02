@@ -36,7 +36,7 @@ export default function Login() {
       } else {
         await login(data);
       }
-      setLocation("/");
+      setLocation("/dashboard");
     } catch (error) {
       console.error(error);
     }

@@ -22,7 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   // Determine navigation based on role
   let navItems = [
-    { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/chat", icon: MessageSquareHeart, label: "Chat Support" },
     { href: "/appointments", icon: CalendarClock, label: "Appointments" },
     { href: "/resources", icon: BookOpen, label: "Resources" },
@@ -41,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ];
   } else if (user?.role === 'admin') {
     navItems = [
-      { href: "/", icon: LayoutDashboard, label: "Admin Dashboard" },
+      { href: "/dashboard", icon: LayoutDashboard, label: "Admin Dashboard" },
       // Admin likely wants to see everything or have specific admin routes 
       // For now, keep it simple as user mainly asked about counselor
     ];

@@ -8,6 +8,7 @@ import { Layout } from "@/components/Layout";
 import { Loader } from "@/components/Loader";
 import { useEffect } from "react";
 
+import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import AIChat from "@/pages/ai-chat/Chat";
 import Appointments from "@/pages/Appointments";
@@ -18,11 +19,8 @@ import Mood from "@/pages/Mood";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
-// Role selection removed — role is now set during registration
 import Profile from "@/pages/onboarding/Profile";
 import Assessment from "@/pages/screening/Assessment";
-// import Documents from "@/pages/onboarding/Documents"; // Removed
-// import Review from "@/pages/onboarding/Review"; // Removed
 
 // Protected Route Wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -39,7 +37,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
         'profile_setup': '/onboarding/profile',
       };
 
-      const targetRoute = stepRoutes[user.currentStep as string] || '/onboarding/role';
+      const targetRoute = stepRoutes[user.currentStep as string] || '/onboarding/profile';
       // Only redirect if we are not already in the /onboarding path (to avoid loops if logic was handled elsewhere, but here we do it broadly)
       // Actually strictly, this is a "Protected App Route", so we SHOULD be redirected OUT of here to onboarding.
       setLocation(targetRoute);
@@ -68,7 +66,7 @@ function OnboardingRoute({ component: Component }: { component: React.ComponentT
     }
     // If active, go to dashboard
     else if (!isLoading && user && (user.onboardingStatus === 'active' || user.onboardingStatus === 'completed')) {
-      setLocation("/");
+      setLocation("/dashboard");
     }
     // Check if we are on the correct step
     else if (!isLoading && user) {
@@ -80,20 +78,20 @@ function OnboardingRoute({ component: Component }: { component: React.ComponentT
 
       const stepRoutes: Record<string, string> = {
         'profile_setup': '/onboarding/profile',
-        'document_submission': '/', // Fallback for legacy state
-        'completed': '/',
+        'document_submission': '/dashboard', // Fallback for legacy state
+        'completed': '/dashboard',
       };
 
-      const targetRoute = stepRoutes[user.currentStep as string] || '/onboarding/role';
+      const targetRoute = stepRoutes[user.currentStep as string] || '/onboarding/profile';
       const currentPath = window.location.pathname;
 
       // redirect if not on target
-      if (currentPath !== targetRoute && targetRoute !== '/') {
+      if (currentPath !== targetRoute && targetRoute !== '/dashboard') {
         console.log("Redirecting to:", targetRoute);
         setLocation(targetRoute);
-      } else if (targetRoute === '/') {
+      } else if (targetRoute === '/dashboard') {
         // Special case for completed but somehow caught here
-        setLocation("/");
+        setLocation("/dashboard");
       }
     }
   }, [user, isLoading, setLocation]);
@@ -107,6 +105,8 @@ function OnboardingRoute({ component: Component }: { component: React.ComponentT
 function Router() {
   return (
     <Switch>
+      {/* Public Routes */}
+      <Route path="/" component={LandingPage} />
       <Route path="/login" component={Login} />
 
       {/* Onboarding Routes */}
@@ -116,10 +116,9 @@ function Router() {
       <Route path="/screening/assessment">
         {() => <ProtectedRoute component={Assessment} />}
       </Route>
-      {/* Documents and Review routes removed */}
 
       {/* Protected Routes */}
-      <Route path="/">
+      <Route path="/dashboard">
         {() => <ProtectedRoute component={Dashboard} />}
       </Route>
       <Route path="/chat">

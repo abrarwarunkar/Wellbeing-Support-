@@ -35,7 +35,7 @@ export function OnboardingLayout({
     }
 
     if (user.onboardingStatus === 'active' && user.currentStep === 'completed') {
-        return <Redirect to="/" />;
+        return <Redirect to="/dashboard" />;
     }
 
     // Calculate progress percentage
