@@ -33,6 +33,11 @@ export function setupAuth(app: Express) {
         createTableIfMissing: false,
     });
 
+    // Trust the first proxy (Render, Railway, etc.) so secure cookies work
+    if (app.get("env") === "production") {
+        app.set("trust proxy", 1);
+    }
+
     app.use(
         session({
             store: sessionStore,
@@ -42,6 +47,8 @@ export function setupAuth(app: Express) {
             cookie: {
                 maxAge: sessionTtl,
                 secure: app.get("env") === "production",
+                sameSite: "lax",
+                httpOnly: true,
             },
         })
     );
@@ -76,15 +83,22 @@ export function setupAuth(app: Express) {
 
     app.post("/api/register", async (req, res, next) => {
         try {
-            const existingUser = await authStorage.getUserByUsername(req.body.username);
-            if (existingUser) {
-                return res.status(400).send("Username already exists");
+            const { username, password, role } = req.body;
+
+            if (!username || !password) {
+                return res.status(400).json({ message: "Username and password are required" });
             }
 
-            const hashedPassword = await hashPassword(req.body.password);
+            const existingUser = await authStorage.getUserByUsername(username);
+            if (existingUser) {
+                return res.status(400).json({ message: "Username already exists" });
+            }
+
+            const hashedPassword = await hashPassword(password);
             const user = await authStorage.createUser({
-                ...req.body,
+                username,
                 password: hashedPassword,
+                role: role || "student",
                 onboardingStatus: "verified", // Skip identity verification
                 currentStep: "role_selection",
             });
@@ -93,8 +107,9 @@ export function setupAuth(app: Express) {
                 if (err) return next(err);
                 res.status(201).json(user);
             });
-        } catch (err) {
-            next(err);
+        } catch (err: any) {
+            console.error("Registration error:", err);
+            res.status(500).json({ message: err.message || "Registration failed" });
         }
     });
 

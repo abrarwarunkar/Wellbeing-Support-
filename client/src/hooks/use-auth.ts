@@ -49,7 +49,10 @@ export function useAuth() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
-      if (!res.ok) throw new Error("Registration failed");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Registration failed");
+      }
       return await res.json();
     },
     onSuccess: (user: User) => {
