@@ -99,8 +99,8 @@ export function setupAuth(app: Express) {
                 username,
                 password: hashedPassword,
                 role: role || "student",
-                onboardingStatus: "verified", // Skip identity verification
-                currentStep: "role_selection",
+                onboardingStatus: "verified",
+                currentStep: "profile_setup", // Skip role_selection — role is set during registration
             });
 
             req.login(user, (err) => {

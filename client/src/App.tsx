@@ -18,7 +18,7 @@ import Mood from "@/pages/Mood";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
-import RoleSelection from "@/pages/onboarding/Role";
+// Role selection removed — role is now set during registration
 import Profile from "@/pages/onboarding/Profile";
 import Assessment from "@/pages/screening/Assessment";
 // import Documents from "@/pages/onboarding/Documents"; // Removed
@@ -36,7 +36,6 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
       // Redirect to onboarding if not active
       // Map step to route
       const stepRoutes: Record<string, string> = {
-        'role_selection': '/onboarding/role',
         'profile_setup': '/onboarding/profile',
       };
 
@@ -80,7 +79,6 @@ function OnboardingRoute({ component: Component }: { component: React.ComponentT
       });
 
       const stepRoutes: Record<string, string> = {
-        'role_selection': '/onboarding/role',
         'profile_setup': '/onboarding/profile',
         'document_submission': '/', // Fallback for legacy state
         'completed': '/',
@@ -112,9 +110,6 @@ function Router() {
       <Route path="/login" component={Login} />
 
       {/* Onboarding Routes */}
-      <Route path="/onboarding/role">
-        {() => <OnboardingRoute component={RoleSelection} />}
-      </Route>
       <Route path="/onboarding/profile">
         {() => <OnboardingRoute component={Profile} />}
       </Route>

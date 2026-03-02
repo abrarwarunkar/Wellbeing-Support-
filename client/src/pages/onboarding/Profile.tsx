@@ -59,8 +59,8 @@ export default function Profile() {
 
     return (
         <OnboardingLayout
-            currentStep={1}
-            totalSteps={2}
+            currentStep={0}
+            totalSteps={1}
             title="Complete Your Profile"
             description="Tell us a bit more about yourself."
         >

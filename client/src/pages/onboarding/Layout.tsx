@@ -11,7 +11,6 @@ interface OnboardingLayoutProps {
 }
 
 const steps = [
-    { id: "role_selection", label: "Role" },
     { id: "profile_setup", label: "Profile" },
 ];
 
