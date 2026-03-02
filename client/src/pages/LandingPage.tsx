@@ -8,15 +8,10 @@ export default function LandingPage() {
     const { user, isLoading } = useAuth();
     const [, setLocation] = useLocation();
 
-    // If user is already logged in, redirect to dashboard
-    if (!isLoading && user) {
-        if (user.onboardingStatus === 'active' || user.onboardingStatus === 'completed') {
-            setLocation("/dashboard");
-            return null;
-        } else {
-            setLocation("/onboarding/profile");
-            return null;
-        }
+    // Only redirect fully onboarded users to dashboard
+    if (!isLoading && user && (user.onboardingStatus === 'active' || user.onboardingStatus === 'completed')) {
+        setLocation("/dashboard");
+        return null;
     }
 
     return (
