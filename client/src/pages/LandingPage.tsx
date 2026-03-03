@@ -5,13 +5,18 @@ import { motion } from "framer-motion";
 import { Brain, MessageCircle, BarChart3, Shield, Heart, Users, ArrowRight, Sparkles } from "lucide-react";
 
 export default function LandingPage() {
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, logout } = useAuth();
     const [, setLocation] = useLocation();
 
     // Only redirect fully onboarded users to dashboard
     if (!isLoading && user && (user.onboardingStatus === 'active' || user.onboardingStatus === 'completed')) {
         setLocation("/dashboard");
         return null;
+    }
+
+    // Clear stale sessions for users who never completed onboarding
+    if (!isLoading && user && user.onboardingStatus !== 'active' && user.onboardingStatus !== 'completed') {
+        logout();
     }
 
     return (
@@ -21,7 +26,7 @@ export default function LandingPage() {
                 <div className="container mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Brain className="h-7 w-7 text-primary" />
-                        <span className="text-xl font-bold text-slate-900">MindGuardAI</span>
+                        <span className="text-xl font-bold text-slate-900">MindfulSpace</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="ghost" onClick={() => setLocation("/login")}>
@@ -64,7 +69,7 @@ export default function LandingPage() {
                             <span className="text-primary block mt-2">A Guardian</span>
                         </h1>
                         <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-                            MindGuardAI detects early signs of mental health challenges using AI — providing
+                            MindfulSpace detects early signs of mental health challenges using AI — providing
                             real-time support, personalized wellness actions, and timely intervention before a crisis occurs.
                         </p>
                         <div className="flex items-center justify-center gap-4">
@@ -203,9 +208,9 @@ export default function LandingPage() {
                 <div className="container mx-auto flex items-center justify-between text-sm text-slate-500">
                     <div className="flex items-center gap-2">
                         <Brain className="h-4 w-4 text-primary" />
-                        <span>MindGuardAI</span>
+                        <span>MindfulSpace</span>
                     </div>
-                    <p>© 2026 MindGuardAI. All rights reserved.</p>
+                    <p>© 2026 MindfulSpace. All rights reserved.</p>
                 </div>
             </footer>
         </div>

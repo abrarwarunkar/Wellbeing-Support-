@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/MindGuardAI-Proactive%20Mental%20Health-6C63FF?style=for-the-badge&logo=brain&logoColor=white" alt="MindGuardAI Banner" />
+  <img src="https://img.shields.io/badge/MindfulSpace-Proactive%20Mental%20Health-6C63FF?style=for-the-badge&logo=brain&logoColor=white" alt="MindfulSpace Banner" />
 </p>
 
-<h1 align="center">🧠 MindGuardAI</h1>
+<h1 align="center">🧠 MindfulSpace</h1>
 <p align="center"><b>An AI-Powered Proactive Mental Health Platform</b></p>
 
 <p align="center">
@@ -67,13 +67,13 @@ Mental health disorders — including **depression**, **anxiety**, and **suicida
 
 ## 💡 Proposed Solution
 
-**MindGuardAI** is an AI-powered mental health platform designed to **detect early signs of mental health deterioration** using **Natural Language Processing (NLP)** on user-generated text from chat and journaling modules. It proactively identifies emotional shifts, stress levels, depressive patterns, and crisis indicators to provide:
+**MindfulSpace** is an AI-powered mental health platform designed to **detect early signs of mental health deterioration** using **Natural Language Processing (NLP)** on user-generated text from chat and journaling modules. It proactively identifies emotional shifts, stress levels, depressive patterns, and crisis indicators to provide:
 
 ### Core Value Proposition
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     MindGuardAI Pipeline                    │
+│                     MindfulSpace Pipeline                    │
 │                                                             │
 │   User Input          AI Analysis           Intervention    │
 │   ─────────          ───────────           ────────────     │
@@ -256,7 +256,7 @@ Mental health disorders — including **depression**, **anxiety**, and **suicida
 ## 📁 Project Structure
 
 ```
-MindGuardAI/
+MindfulSpace/
 │
 ├── client/                          # Frontend React Application
 │   └── src/
@@ -340,8 +340,8 @@ MindGuardAI/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/MindGuardAI.git
-cd MindGuardAI
+git clone https://github.com/your-username/MindfulSpace.git
+cd MindfulSpace
 
 # 2. Install dependencies
 npm install
@@ -364,8 +364,8 @@ The application will be available at `http://localhost:5000`.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/MindGuardAI.git
-cd MindGuardAI
+git clone https://github.com/your-username/MindfulSpace.git
+cd MindfulSpace
 
 # 2. Start the full stack with Docker Compose
 docker-compose up --build
@@ -395,7 +395,7 @@ Create a `.env` file in the project root based on `.env.example`:
 
 ## 🗄️ Database Schema
 
-MindGuardAI uses **10 interconnected tables** managed by Drizzle ORM:
+MindfulSpace uses **10 interconnected tables** managed by Drizzle ORM:
 
 ```
 ┌───────────────┐     ┌────────────────────┐     ┌──────────────────┐
@@ -445,7 +445,7 @@ MindGuardAI uses **10 interconnected tables** managed by Drizzle ORM:
 
 ## 🤖 AI Services
 
-MindGuardAI integrates **5 distinct AI capabilities**, all powered by **Groq's Llama 3.3 70B Versatile** model:
+MindfulSpace integrates **5 distinct AI capabilities**, all powered by **Groq's Llama 3.3 70B Versatile** model:
 
 ### 1. 🚨 Crisis Detection (`detectCrisis`)
 - **Trigger:** Runs on user-generated text (forum posts, chat messages, mood notes)
@@ -642,7 +642,7 @@ npm run start
 
 ### Innovation Highlights
 
-- **Proactive vs. Reactive:** Unlike traditional apps that wait for users to seek help, MindGuardAI actively monitors and alerts
+- **Proactive vs. Reactive:** Unlike traditional apps that wait for users to seek help, MindfulSpace actively monitors and alerts
 - **NLP-Powered Risk Scoring:** Goes beyond simple keyword matching — uses a 70B-parameter LLM for nuanced understanding of emotional context
 - **Institutional Intelligence:** Unique feature enabling campus-wide mental health trend analysis for strategic planning
 - **Graceful Degradation:** All AI features include intelligent fallback mechanisms ensuring the platform remains functional even without API connectivity
