@@ -14,7 +14,14 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Appointments() {
   const { data: appointments, isLoading } = useAppointments();
-  const { data: counselors } = useQuery<User[]>({ queryKey: ["/api/counselors"] });
+  const { data: counselors } = useQuery<User[]>({
+    queryKey: ["/api/counselors"],
+    queryFn: async () => {
+      const res = await fetch("/api/counselors", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch counselors");
+      return res.json();
+    },
+  });
   const createMutation = useCreateAppointment();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -22,8 +29,7 @@ export default function Appointments() {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     counselorId: "",
-    date: "",
-    time: "",
+    datetime: "",      // Combined datetime-local input (YYYY-MM-DDTHH:mm)
     type: "online" as "online" | "in-person",
     notes: ""
   });
@@ -44,21 +50,44 @@ export default function Appointments() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.date || !formData.time) return;
+    if (!formData.datetime) {
+      toast({ title: "Please select a date and time", variant: "destructive" });
+      return;
+    }
+    if (!formData.counselorId) {
+      toast({ title: "Please select a counselor", variant: "destructive" });
+      return;
+    }
 
-    // Combine date and time
-    const dateTime = new Date(`${formData.date}T${formData.time}`);
+    const dateTime = new Date(formData.datetime);
+    if (isNaN(dateTime.getTime())) {
+      toast({ title: "Invalid date/time selected", variant: "destructive" });
+      return;
+    }
 
-    await createMutation.mutateAsync({
-      counselorId: formData.counselorId || undefined,
-      date: dateTime, // Pass Date object (Zod schema expects Date type)
-      type: formData.type,
-      notes: formData.notes,
-      studentId: "user-id-placeholder", // In real app, backend infers this from session
-    });
-    setIsOpen(false);
-    setFormData({ counselorId: "", date: "", time: "", type: "online", notes: "" });
+    try {
+      await createMutation.mutateAsync({
+        counselorId: formData.counselorId,
+        date: dateTime,
+        type: formData.type,
+        notes: formData.notes,
+        studentId: "placeholder", // Server overrides from session
+      });
+      toast({ title: "Appointment booked! ✓", description: "Your session has been scheduled." });
+      setIsOpen(false);
+      setFormData({ counselorId: "", datetime: "", type: "online", notes: "" });
+    } catch (err: any) {
+      const message = err?.message?.includes("400:")
+        ? "Invalid data. Please check your inputs."
+        : err?.message || "Please try again.";
+      toast({ title: "Booking failed", description: message, variant: "destructive" });
+    }
   };
+
+  // Minimum datetime: now + 1 hour
+  const minDatetime = new Date(Date.now() + 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 16);
 
   if (isLoading) return <Loader />;
 
@@ -87,8 +116,9 @@ export default function Appointments() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Counselor Select */}
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Select Counselor</label>
+                  <label className="text-sm font-semibold text-slate-700">Select Counselor *</label>
                   <select
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white"
                     value={formData.counselorId}
@@ -97,34 +127,31 @@ export default function Appointments() {
                   >
                     <option value="">-- Choose a Counselor --</option>
                     {counselors?.map(c => (
-                      <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.firstName || c.username} {c.lastName || ""}
+                      </option>
                     ))}
                   </select>
+                  {!counselors?.length && (
+                    <p className="text-xs text-amber-600">No counselors available. Contact admin.</p>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">Date</label>
-                    <input
-                      type="date"
-                      required
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                      value={formData.date}
-                      onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700">Time</label>
-                    <input
-                      type="time"
-                      required
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                      value={formData.time}
-                      onChange={e => setFormData({ ...formData, time: e.target.value })}
-                    />
-                  </div>
+                {/* Date & Time - single datetime-local input for reliability */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    min={minDatetime}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    value={formData.datetime}
+                    onChange={e => setFormData({ ...formData, datetime: e.target.value })}
+                  />
+                  <p className="text-xs text-slate-400">Select a future date and time</p>
                 </div>
 
+                {/* Session Type */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Session Type</label>
                   <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
@@ -145,6 +172,7 @@ export default function Appointments() {
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Notes (Optional)</label>
                   <textarea
@@ -188,10 +216,9 @@ export default function Appointments() {
                   <h3 className="font-bold text-lg text-slate-800">
                     {format(new Date(apt.date), "EEEE, MMMM do, yyyy")}
                   </h3>
-                  {/* Display Counselor Name if available */}
                   {apt.counselor && (
                     <p className="text-sm font-medium text-slate-700">
-                      Counselor: {apt.counselor.firstName} {apt.counselor.lastName}
+                      Counselor: {apt.counselor.firstName || apt.counselor.username} {apt.counselor.lastName || ""}
                     </p>
                   )}
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -218,7 +245,6 @@ export default function Appointments() {
                 </span>
 
                 <div className="flex gap-2">
-                  {/* Message Button */}
                   {apt.counselor?.email && (
                     <Button
                       variant="outline"
@@ -230,7 +256,6 @@ export default function Appointments() {
                     </Button>
                   )}
 
-                  {/* Cancel Button */}
                   {apt.status !== 'cancelled' && apt.status !== 'completed' && (
                     <Button
                       variant="ghost"

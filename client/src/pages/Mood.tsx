@@ -2,6 +2,7 @@ import { useMoodEntries, useCreateMoodEntry } from "@/hooks/use-mood";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader } from "@/components/Loader";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AreaChart,
   Area,
@@ -20,19 +21,25 @@ export default function Mood() {
   const entries = (moodData as any)?.entries ?? (Array.isArray(moodData) ? moodData : []);
   const createMutation = useCreateMoodEntry();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const [score, setScore] = useState(3);
   const [note, setNote] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createMutation.mutateAsync({
-      score,
-      note,
-      userId: user?.id || "unknown",
-    });
-    setNote("");
-    setScore(3);
+    try {
+      await createMutation.mutateAsync({
+        score,
+        note,
+        userId: "session", // Server overrides this with the actual session user ID
+      });
+      toast({ title: "Mood saved! ✓", description: `Feeling ${moodLabels[score]} has been logged.` });
+      setNote("");
+      setScore(3);
+    } catch (err: any) {
+      toast({ title: "Failed to save mood", description: err?.message || "Please try again.", variant: "destructive" });
+    }
   };
 
   if (isLoading) return <Loader />;
@@ -51,7 +58,7 @@ export default function Mood() {
   };
   const mood = moodEmoji(score);
 
-  const moodLabels = ["", "Awful", "Bad", "Okay", "Good", "Great"];
+  const moodLabels: Record<number, string> = { 1: "Awful", 2: "Bad", 3: "Okay", 4: "Good", 5: "Great" };
 
   return (
     <div className="space-y-8">

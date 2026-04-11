@@ -37,8 +37,12 @@ export default function Assessment() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ answers: data }),
+                credentials: "include",
             });
-            if (!res.ok) throw new Error("Failed to submit");
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to submit");
+            }
             return res.json();
         },
         onSuccess: (data) => {

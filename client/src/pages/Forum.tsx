@@ -7,24 +7,35 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Forum() {
   const { data: posts, isLoading } = usePosts();
   const createMutation = useCreatePost();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", content: "", isAnonymous: false });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createMutation.mutateAsync({
-      title: newPost.title,
-      content: newPost.content,
-      isAnonymous: newPost.isAnonymous,
-      authorId: user?.id || "unknown" // Should be handled by backend session
-    });
-    setIsOpen(false);
-    setNewPost({ title: "", content: "", isAnonymous: false });
+    if (!user?.id) {
+      toast({ title: "Not logged in", description: "Please log in to post.", variant: "destructive" });
+      return;
+    }
+    try {
+      await createMutation.mutateAsync({
+        title: newPost.title,
+        content: newPost.content,
+        isAnonymous: newPost.isAnonymous,
+        authorId: user.id,
+      });
+      toast({ title: "Post created! ✓" });
+      setIsOpen(false);
+      setNewPost({ title: "", content: "", isAnonymous: false });
+    } catch (err: any) {
+      toast({ title: "Failed to create post", description: err?.message || "Please try again.", variant: "destructive" });
+    }
   };
 
   if (isLoading) return <Loader />;

@@ -5,6 +5,12 @@ import { z } from "zod";
 
 const router = Router();
 
+function sanitizeUser(user: any) {
+  if (!user) return null;
+  const { password, ...safe } = user;
+  return safe;
+}
+
 // Middleware to ensure user is logged in
 const requireAuth = (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) {
@@ -18,17 +24,14 @@ router.post("/verify-identity", requireAuth, async (req, res) => {
     console.log("POST /verify-identity hit with body:", req.body);
     const { code } = req.body;
     // Simulate OTP verification
-    if (code === "123456") {
-        console.log("OTP correct, updating user...");
-        const user = await storage.updateUser((req.user as any).id, {
-            onboardingStatus: "verified",
-            currentStep: "role_selection",
-        });
-        console.log("User updated:", user);
-        return res.json({ message: "Identity verified", user });
-    }
-    console.log("Invalid OTP code provided:", code);
-    res.status(400).json({ message: "Invalid OTP code" });
+        if (code === "123456") {
+            const user = await storage.updateUser((req.user as any).id, {
+                onboardingStatus: "verified",
+                currentStep: "role_selection",
+            });
+            return res.json({ message: "Identity verified", user: sanitizeUser(user) });
+        }
+        res.status(400).json({ message: "Invalid OTP code" });
 });
 
 // 2. Role Selection (Step 4)
@@ -43,7 +46,7 @@ router.post("/role", requireAuth, async (req, res) => {
             role,
             currentStep: "profile_setup",
         });
-        res.json({ message: "Role updated", user });
+        res.json({ message: "Role updated", user: sanitizeUser(user) });
     } catch (err) {
         res.status(400).json({ message: "Invalid role" });
     }
@@ -62,11 +65,10 @@ router.post("/profile", requireAuth, async (req, res) => {
         const data = profileSchema.parse(req.body);
         const user = await storage.updateUser((req.user as any).id, {
             ...data,
-            // Complete onboarding immediately
             onboardingStatus: "active",
             currentStep: "completed",
         });
-        res.json({ message: "Profile updated", user });
+        res.json({ message: "Profile updated", user: sanitizeUser(user) });
     } catch (err) {
         res.status(400).json({ message: "Invalid profile data" });
     }
@@ -88,13 +90,12 @@ router.post("/documents", requireAuth, upload.single("file"), async (req, res) =
         status: "pending",
     });
 
-    // Update user step
     const user = await storage.updateUser((req.user as any).id, {
         currentStep: "review_wait",
         onboardingStatus: "audit_pending"
     });
 
-    res.json({ message: "Document uploaded", document: doc, user });
+    res.json({ message: "Document uploaded", document: doc, user: sanitizeUser(user) });
 });
 
 // 5. Consent (Step 9 - usually before review, but flow varies)
@@ -111,11 +112,10 @@ router.post("/admin/review/:userId", requireAuth, async (req, res) => {
 
     const user = await storage.updateUser(req.params.userId, {
         onboardingStatus: status,
-        // if active, maybe set currentStep to 'completed'
         currentStep: status === 'active' ? 'completed' : 'rejected',
     });
 
-    res.json({ message: `User ${status}`, user });
+    res.json({ message: `User ${status}`, user: sanitizeUser(user) });
 });
 
 export default router;

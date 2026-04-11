@@ -9,6 +9,22 @@ import screeningRouter from "./routes/screening";
 import { detectCrisis, getWellnessActions, getInstitutionalInsights } from "./services/ai";
 import { broadcastAlert } from "./socket";
 
+/** Strip password hash before sending user data to clients */
+function sanitizeUser(user: any) {
+  if (!user) return null;
+  const { password, ...safe } = user;
+  return safe;
+}
+
+function sanitizeAppointment(appt: any) {
+  if (!appt) return appt;
+  return {
+    ...appt,
+    student: appt.student ? sanitizeUser(appt.student) : null,
+    counselor: appt.counselor ? sanitizeUser(appt.counselor) : null,
+  };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -28,8 +44,13 @@ export async function registerRoutes(
   app.get(api.appointments.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
-    const appointments = await storage.getAppointments(userId);
-    res.json(appointments);
+    try {
+      const appointments = await storage.getAppointments(userId);
+      res.json(appointments.map(sanitizeAppointment));
+    } catch (err) {
+      console.error('Get appointments error:', err);
+      res.status(500).json({ message: 'Failed to fetch appointments' });
+    }
   });
 
   app.post(api.appointments.create.path, async (req, res) => {
@@ -38,8 +59,11 @@ export async function registerRoutes(
     try {
       const input = api.appointments.create.input.parse(req.body);
       const appointment = await storage.createAppointment({
-        ...input,
-        studentId: userId,
+        counselorId: input.counselorId,
+        date: input.date,
+        type: input.type,
+        notes: input.notes,
+        studentId: userId, // Always use session user, ignore client-submitted studentId
       });
       res.status(201).json(appointment);
     } catch (err) {
@@ -49,7 +73,8 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error('Appointment create error:', err);
+      res.status(500).json({ message: 'Failed to create appointment' });
     }
   });
 
@@ -68,7 +93,8 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error('Appointment update error:', err);
+      res.status(500).json({ message: 'Failed to update appointment' });
     }
   });
 
@@ -92,7 +118,8 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error('Resource create error:', err);
+      res.status(500).json({ message: 'Failed to create resource' });
     }
   });
 
@@ -114,8 +141,10 @@ export async function registerRoutes(
     try {
       const input = api.posts.create.input.parse(req.body);
       const post = await storage.createPost({
-        ...input,
-        authorId: userId,
+        title: input.title,
+        content: input.content,
+        isAnonymous: input.isAnonymous,
+        authorId: userId, // Always use session user, ignore client-submitted authorId
       });
 
       // SENTINEL: Check for crisis content
@@ -141,7 +170,8 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error('Post create error:', err);
+      res.status(500).json({ message: 'Failed to create post' });
     }
   });
 
@@ -152,9 +182,10 @@ export async function registerRoutes(
     try {
       const input = api.replies.create.input.parse(req.body);
       const reply = await storage.createReply({
-        ...input,
+        content: input.content,
+        isAnonymous: input.isAnonymous,
         postId: Number(req.params.postId),
-        authorId: userId,
+        authorId: userId, // Always use session user
       });
       res.status(201).json(reply);
     } catch (err) {
@@ -164,14 +195,21 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error('Reply create error:', err);
+      res.status(500).json({ message: 'Failed to create reply' });
     }
   });
 
   // === Counselors ===
   app.get("/api/counselors", async (req, res) => {
-    const counselors = await storage.getCounselors();
-    res.json(counselors);
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const counselors = await storage.getCounselors();
+      res.json(counselors.map(sanitizeUser));
+    } catch (err) {
+      console.error('Get counselors error:', err);
+      res.status(500).json({ message: 'Failed to fetch counselors' });
+    }
   });
 
   // === Mood ===
@@ -189,8 +227,9 @@ export async function registerRoutes(
     try {
       const input = api.mood.create.input.parse(req.body);
       const entry = await storage.createMoodEntry({
-        ...input,
-        userId: userId,
+        score: input.score,
+        note: input.note,
+        userId: userId, // Always use session user, ignore client-submitted userId
       });
       res.status(201).json(entry);
     } catch (err) {
@@ -200,7 +239,8 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
-      throw err;
+      console.error('Mood entry error:', err);
+      res.status(500).json({ message: 'Failed to save mood entry' });
     }
   });
 
@@ -239,13 +279,17 @@ export async function registerRoutes(
   app.get("/api/admin/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     const userId = (req.user as any).id;
-    // In production, strictly check for admin role
     const user = await storage.getUser(userId);
     if (user?.role !== 'admin') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "Forbidden: Admin access required" });
     }
-    const users = await storage.getAllUsers();
-    res.json(users);
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers.map(sanitizeUser));
+    } catch (err) {
+      console.error('Get all users error:', err);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
   });
 
   app.patch("/api/admin/users/:userId", async (req, res) => {
@@ -254,10 +298,9 @@ export async function registerRoutes(
     const currentUser = await storage.getUser(currentUserId);
 
     if (currentUser?.role !== 'admin') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "Forbidden: Admin access required" });
     }
 
-    // Validate updates
     const updateSchema = z.object({
       role: z.enum(["student", "counselor", "admin", "partner"]).optional(),
       onboardingStatus: z.enum(["active", "rejected", "inactive"]).optional(),
@@ -266,9 +309,13 @@ export async function registerRoutes(
     try {
       const updates = updateSchema.parse(req.body);
       const updatedUser = await storage.updateUser(req.params.userId, updates);
-      res.json(updatedUser);
+      res.json(sanitizeUser(updatedUser));
     } catch (err) {
-      res.status(400).json({ message: "Invalid update data" });
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      console.error('Update user error:', err);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 

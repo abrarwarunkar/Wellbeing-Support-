@@ -6,9 +6,13 @@ export function useAppointments() {
     queryKey: [api.appointments.list.path],
     queryFn: async () => {
       const res = await fetch(api.appointments.list.path, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch appointments");
-      return api.appointments.list.responses[200].parse(await res.json());
+      if (!res.ok) {
+        if (res.status === 401) return [];
+        throw new Error("Failed to fetch appointments");
+      }
+      return res.json();
     },
+    staleTime: 0, // Always re-fetch after booking mutations
   });
 }
 
@@ -16,15 +20,17 @@ export function useCreateAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: AppointmentInput) => {
-      const validated = api.appointments.create.input.parse(data);
       const res = await fetch(api.appointments.create.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validated),
+        body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to create appointment");
-      return api.appointments.create.responses[201].parse(await res.json());
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to create appointment");
+      }
+      return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.appointments.list.path] }),
   });
@@ -41,8 +47,11 @@ export function useUpdateAppointment() {
         body: JSON.stringify(updates),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to update appointment");
-      return api.appointments.update.responses[200].parse(await res.json());
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to update appointment");
+      }
+      return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.appointments.list.path] }),
   });

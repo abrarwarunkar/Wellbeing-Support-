@@ -6,9 +6,13 @@ export function useMoodEntries() {
     queryKey: [api.mood.list.path],
     queryFn: async () => {
       const res = await fetch(api.mood.list.path, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch mood entries");
-      return api.mood.list.responses[200].parse(await res.json());
+      if (!res.ok) {
+        if (res.status === 401) return { entries: [], analytics: { averageScore: 0, trend: "stable" } };
+        throw new Error("Failed to fetch mood entries");
+      }
+      return res.json();
     },
+    staleTime: 0, // Always re-fetch when component mounts after mutation
   });
 }
 
@@ -16,16 +20,23 @@ export function useCreateMoodEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: MoodInput) => {
-      const validated = api.mood.create.input.parse(data);
       const res = await fetch(api.mood.create.path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validated),
+        body: JSON.stringify(data),
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to create mood entry");
-      return api.mood.create.responses[201].parse(await res.json());
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to save mood entry");
+      }
+      return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.mood.list.path] }),
+    onSuccess: () => {
+      // Invalidate mood entries so the list refreshes immediately
+      queryClient.invalidateQueries({ queryKey: [api.mood.list.path] });
+      // Also invalidate AI recommendations since mood context changed
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/recommendations"] });
+    },
   });
 }
