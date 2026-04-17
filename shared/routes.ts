@@ -76,6 +76,14 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/resources/:id',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: errorSchemas.notFound,
+      },
+    },
   },
   posts: {
     list: {
@@ -96,10 +104,20 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/posts',
-      input: insertPostSchema,
+      input: insertPostSchema.extend({
+        authorId: z.string().optional()
+      }),
       responses: {
         201: z.custom<typeof posts.$inferSelect>(),
         400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/posts/:id',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: errorSchemas.notFound,
       },
     },
   },
@@ -107,7 +125,9 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/posts/:postId/replies',
-      input: insertReplySchema.omit({ postId: true }),
+      input: insertReplySchema.omit({ postId: true }).extend({
+        authorId: z.string().optional()
+      }),
       responses: {
         201: z.custom<typeof replies.$inferSelect>(),
         400: errorSchemas.validation,

@@ -15,7 +15,8 @@ import {
     Activity,
     Loader2,
     GraduationCap,
-    HeartHandshake
+    HeartHandshake,
+    MessageSquare
 } from "lucide-react";
 import {
     Tabs,
@@ -44,6 +45,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
+import { ResourcesAdminTab } from "./ResourcesAdminTab";
+import { ForumAdminTab } from "./ForumAdminTab";
 
 export default function AdminDashboard() {
     return (
@@ -71,6 +74,10 @@ export default function AdminDashboard() {
                         <BookOpen className="mr-2 h-4 w-4" />
                         Resources
                     </TabsTrigger>
+                    <TabsTrigger value="forum">
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Forum
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -86,9 +93,11 @@ export default function AdminDashboard() {
                 </TabsContent>
 
                 <TabsContent value="resources" className="space-y-4">
-                    <div className="flex items-center justify-center p-8 border border-dashed rounded-lg bg-slate-50">
-                        <p className="text-muted-foreground">Resource management coming soon.</p>
-                    </div>
+                    <ResourcesAdminTab />
+                </TabsContent>
+
+                <TabsContent value="forum" className="space-y-4">
+                    <ForumAdminTab />
                 </TabsContent>
             </Tabs>
         </div>

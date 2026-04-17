@@ -48,11 +48,13 @@ export interface IStorage {
   // Resources
   getResources(): Promise<Resource[]>;
   createResource(resource: InsertResource): Promise<Resource>;
+  deleteResource(id: number): Promise<boolean>;
 
   // Posts
   getPosts(): Promise<(Post & { author: { username: string | null } | null })[]>;
   getPost(id: number): Promise<(Post & { replies: (Reply & { author: { username: string | null } | null })[], author: { username: string | null } | null }) | undefined>;
   createPost(post: InsertPost): Promise<Post>;
+  deletePost(id: number): Promise<boolean>;
 
   // Replies
   createReply(reply: InsertReply): Promise<Reply>;
@@ -125,6 +127,11 @@ export class DatabaseStorage implements IStorage {
     return newResource;
   }
 
+  async deleteResource(id: number): Promise<boolean> {
+    await db.delete(resources).where(eq(resources.id, id));
+    return true;
+  }
+
   // Posts
   async getPosts(): Promise<(Post & { author: { username: string | null } | null })[]> {
     const result = await db.query.posts.findMany({
@@ -167,6 +174,12 @@ export class DatabaseStorage implements IStorage {
   async createPost(post: InsertPost): Promise<Post> {
     const [newPost] = await db.insert(posts).values(post).returning();
     return newPost;
+  }
+
+  async deletePost(id: number): Promise<boolean> {
+    await db.delete(replies).where(eq(replies.postId, id));
+    await db.delete(posts).where(eq(posts.id, id));
+    return true;
   }
 
   // Replies
